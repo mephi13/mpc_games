@@ -15,9 +15,10 @@ namespace fbpcf::demographic_metrics {
 
 template <int schedulerId>
 long unsigned int
-DemographicMetricsGame<schedulerId>::demographicMetricsSum(
+DemographicMetricsGame<schedulerId>::demographicMetricsAverage(
     const DemographicInfo& aliceDatabase,
-    const DemographicInfo& bobDatabase) {
+    const DemographicInfo& bobDatabase,
+    const bool validate) {
   int alicePartyId = 0;
   int bobPartyId = 1;
 
@@ -26,43 +27,53 @@ DemographicMetricsGame<schedulerId>::demographicMetricsSum(
 
   // the mpc function defined for the game
 
-  // input validation
-  auto secAge = secAliceDatabase.ageShare + secBobDatabase.ageShare;
-  
-  // create a vector of bools (1 if row is valid, 0 otherwise)
-  auto secValid = (secAge < SecUnsignedInt(std::vector<uint32_t>(aliceDatabase.ageShare.size(), 80), 0));
-
   // calculate the sums on transposed batch vector
   // cannot be done in parrallel 
   std::vector<SecUnsignedIntSingle> secAliceSum = {};
   std::vector<SecUnsignedIntSingle> secBobSum = {};
 
-  // reveal the validity vector, only valid vals will be used in aggregation
-  auto validA = secValid.openToParty(alicePartyId).getValue();
-  auto validB = secValid.openToParty(bobPartyId).getValue();
-
   std::vector<uint32_t> validAlice = {};
   std::vector<uint32_t> validBob = {};
-  
-  // should be symmetric for both parties (all 0 for valid vector of other party)
-  for (size_t i = 0; i < validA.size(); ++i) {
-    if(validA.at(i)){
-      validAlice.push_back(aliceDatabase.ageShare.at(i));
-      validBob.push_back(bobDatabase.ageShare.at(i));
+
+  XLOG(INFO, "Validate: ", validate);
+  if (validate){
+    // input validation
+    auto secAge = secAliceDatabase.ageShare + secBobDatabase.ageShare;
+
+    // create a vector of bools (1 if row is valid, 0 otherwise)
+    auto secValid = (secAge < SecUnsignedInt(std::vector<uint32_t>(aliceDatabase.ageShare.size(), 200), 0));
+    // reveal the validity vector, only valid vals will be used in aggregation
+    auto validA = secValid.openToParty(alicePartyId).getValue();
+    auto validB = secValid.openToParty(bobPartyId).getValue();
+    
+    for(int i = 0; i < validA.size(); ++i)
+      if(!validA.at(i)){
+        XLOG(INFO, "invalid entry at pos ", i);
+      }
+
+    // should be symmetric for both parties (all 0 for valid vector of other party)
+    for (size_t i = 0; i < validA.size(); ++i) {
+      if(validA.at(i)){
+        validAlice.push_back(aliceDatabase.ageShare.at(i));
+        validBob.push_back(bobDatabase.ageShare.at(i));
+      }
     }
-  }
-  for (size_t i = 0; i < validB.size(); ++i) {
-    if(validB.at(i)){
-      validAlice.push_back(aliceDatabase.ageShare.at(i));
-      validBob.push_back(bobDatabase.ageShare.at(i));
+    for (size_t i = 0; i < validB.size(); ++i) {
+      if(validB.at(i)){
+        validAlice.push_back(aliceDatabase.ageShare.at(i));
+        validBob.push_back(bobDatabase.ageShare.at(i));
+      }
     }
+  } else {
+    validAlice = aliceDatabase.ageShare;
+    validBob = bobDatabase.ageShare;
   }
 
   for (size_t i = 0; i < validAlice.size(); ++i) {
-    secAliceSum.push_back(SecUnsignedIntSingle(aliceDatabase.ageShare.at(i), alicePartyId));
+    secAliceSum.push_back(SecUnsignedIntSingle(validAlice.at(i), alicePartyId));
   }
   for (size_t i = 0; i < validBob.size(); ++i) {
-    secBobSum.push_back(SecUnsignedIntSingle(bobDatabase.ageShare.at(i), bobPartyId));
+    secBobSum.push_back(SecUnsignedIntSingle(validBob.at(i), bobPartyId));
   }
 
   uint32_t zero = 0;
@@ -75,7 +86,7 @@ DemographicMetricsGame<schedulerId>::demographicMetricsSum(
   // auto secWealth = secAliceDatabase.wealthShare + secBobDatabase.wealthShare;
 
   auto pubAgeResult = secSum.openToParty(alicePartyId);
-  return pubAgeResult.getValue();
+  return pubAgeResult.getValue()/float(validAlice.size());
 }
 
 template <int schedulerId>

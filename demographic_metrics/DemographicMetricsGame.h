@@ -29,9 +29,10 @@ class DemographicMetricsGame : public frontend::MpcGame<schedulerId> {
     std::vector<uint32_t> wealthShare;
   };
 
-  long unsigned int demographicMetricsSum(
+  long unsigned int demographicMetricsAverage(
       const DemographicInfo& aliceDatabase,
-      const DemographicInfo& bobDatabase);
+      const DemographicInfo& bobDatabase,
+      const bool validate);
 
  private:
   class SecDemographicInfo {

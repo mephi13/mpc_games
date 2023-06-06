@@ -20,6 +20,7 @@ DEFINE_int32(party, 0, "my party ID");
 DEFINE_string(server_ip, "127.0.0.1", "server's ip address");
 DEFINE_int32(port, 5000, "server port number");
 DEFINE_int32(size, 123, "database size");
+DEFINE_bool(validate, false, "validate inputs");
 
 int main(int argc, char* argv[]) {
   folly::init(&argc, &argv);
@@ -29,6 +30,7 @@ int main(int argc, char* argv[]) {
   XLOGF(INFO, "server IP: {}", FLAGS_server_ip);
   XLOGF(INFO, "port: {}", FLAGS_port);
   XLOGF(INFO, "size: {}", FLAGS_size);
+  XLOGF(INFO, "validate: {}", FLAGS_validate);
 
   auto size = FLAGS_size;
 
@@ -87,6 +89,9 @@ int main(int argc, char* argv[]) {
     item = dist2(e);
   }
 
+  myInfo.ageShare.at(1) = 291230;
+  myInfo.ageShare.at(5) = 111111;
+
   auto sum = 0;
     for (uint32_t i: myInfo.ageShare)
      sum += i;
@@ -95,8 +100,8 @@ int main(int argc, char* argv[]) {
 
   try {
     auto mpcResult = FLAGS_party == 0
-        ? game->demographicMetricsSum(myInfo, dummyInfo)
-        : game->demographicMetricsSum(dummyInfo, myInfo);
+        ? game->demographicMetricsAverage(myInfo, dummyInfo, FLAGS_validate)
+        : game->demographicMetricsAverage(dummyInfo, myInfo, FLAGS_validate);
     XLOG(INFO, "MPC result: ", mpcResult);
     // for (uint32_t i: mpcResult)
     //   std::cout << i << ", ";
