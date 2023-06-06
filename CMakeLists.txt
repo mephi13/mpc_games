@@ -37,10 +37,31 @@ target_link_libraries(
   Folly::folly
 )
 
+add_executable(
+  demographic
+  "demographic_metrics/main.cpp"
+  "demographic_metrics/DemographicMetricsGame.h"
+  "demographic_metrics/DemographicMetricsGame_impl.h")
+target_link_libraries(
+  demographic
+  fbpcf
+  Folly::folly
+)
+
+# add_executable(
+#   validation
+#   "input_validation/main.cpp"
+#   "input_validation/InputValidationGame.h"
+#   "input_validation/InputValidationGame_impl.h")
+# target_link_libraries(
+#   validation
+#   fbpcf
+#   Folly::folly
+# )
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
  set(CMAKE_INSTALL_PREFIX "../")
 endif()
 
 install(TARGETS billionaire DESTINATION bin)
-#install(TARGETS edit_distance_runner DESTINATION bin)
-#install(TARGETS edit_distance_validator DESTINATION bin)
+install(TARGETS demographic DESTINATION bin)
