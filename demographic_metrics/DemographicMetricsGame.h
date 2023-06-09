@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <type_traits>
 #include "fbpcf/frontend/mpcGame.h"
+#include <tuple>
 
 namespace fbpcf::demographic_metrics {
 
@@ -29,10 +30,32 @@ class DemographicMetricsGame : public frontend::MpcGame<schedulerId> {
     std::vector<uint32_t> wealthShare;
   };
 
-  long unsigned int demographicMetricsAverage(
+  // Returns the average age of the two databases
+  float demographicMetricsAverage(
       const DemographicInfo& aliceDatabase,
-      const DemographicInfo& bobDatabase,
-      const bool validate);
+      const DemographicInfo& bobDatabase);
+
+  // Returns the average age of the two databases
+  float demographicMetricsAverageSecretShared(
+      const DemographicInfo& aliceDatabase,
+      const DemographicInfo& bobDatabase);
+
+  // Mutates the databases to remove invalid entries
+  int demographicMetricsValidate(
+      DemographicInfo& aliceDatabase,
+      DemographicInfo& bobDatabase);
+
+  // Returns the aggregated sum of rows in the database (or ints in the batch in general)
+  // reveals to the parties their corresponding shares of values in each row
+  // the parties then sum together their corresponding shares
+  // and then those sums are added together by one party
+  long unsigned int aggregateBatch(
+      const SecUnsignedInt& inputBatch);
+
+  // Returns the histogram of the two databases
+  std::vector<long unsigned int> demographicMetricsHistogram(
+      const DemographicInfo& aliceDatabase,
+      const DemographicInfo& bobDatabase);
 
  private:
   class SecDemographicInfo {

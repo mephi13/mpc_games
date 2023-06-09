@@ -16,6 +16,8 @@
 #include "fbpcf/engine/communication/SocketPartyCommunicationAgentFactory.h"
 #include "fbpcf/util/MetricCollector.h"
 
+#include "folly/Benchmark.h"
+
 DEFINE_int32(party, 0, "my party ID");
 DEFINE_string(server_ip, "127.0.0.1", "server's ip address");
 DEFINE_int32(port, 5000, "server port number");
@@ -76,11 +78,11 @@ int main(int argc, char* argv[]) {
 
   std::random_device rd;
   std::mt19937_64 e(rd());
-  std::uniform_int_distribution<uint32_t> dist1(0, 100/2);
+  std::uniform_int_distribution<uint32_t> dist1(0, 60);
   std::uniform_int_distribution<uint32_t> dist2(0, 250000);
 
   for (auto& item : myInfo.ageShare) {
-    item = dist1(e);
+    item = std::max(int(45 * std::normal_distribution<float>(0.5, 0.6)(e)), 10);
   }
   for (auto item : myInfo.genderShare) { 
     item = (bool) (rand() % 2);
@@ -99,13 +101,54 @@ int main(int argc, char* argv[]) {
   XLOG(INFO, "My shares: ", sum);
 
   try {
+
+    auto start = std::chrono::steady_clock::now();
+
+    if (FLAGS_validate){
+      auto validateResult = FLAGS_party == 0
+          ? game->demographicMetricsValidate(myInfo, dummyInfo)
+          : game->demographicMetricsValidate(dummyInfo, myInfo);
+
+      XLOG(INFO, "Validation result database size: ", validateResult);
+    }
+
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
+
+    XLOG(INFO) << "Validation took: " <<(elapsed.count()) << "ms";
+    
+    start = std::chrono::steady_clock::now();
+
     auto mpcResult = FLAGS_party == 0
-        ? game->demographicMetricsAverage(myInfo, dummyInfo, FLAGS_validate)
-        : game->demographicMetricsAverage(dummyInfo, myInfo, FLAGS_validate);
-    XLOG(INFO, "MPC result: ", mpcResult);
-    // for (uint32_t i: mpcResult)
-    //   std::cout << i << ", ";
-    // std::cout << std::endl;
+        ? game->demographicMetricsAverage(myInfo, dummyInfo)
+        : game->demographicMetricsAverage(dummyInfo, myInfo);
+    XLOG(INFO, "MPC average result: ", mpcResult);
+
+    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
+
+    XLOG(INFO) << "MPC average took: " <<(elapsed.count()) << "ms";
+
+    start = std::chrono::steady_clock::now();
+
+    auto ssResult = FLAGS_party == 0
+        ? game->demographicMetricsAverageSecretShared(myInfo, dummyInfo)
+        : game->demographicMetricsAverageSecretShared(dummyInfo, myInfo);
+    XLOG(INFO, "Secret shared average result: ", ssResult);
+
+    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
+
+    XLOG(INFO) << "Secret shared average took: " <<(elapsed.count()) << "ms";
+
+    start = std::chrono::steady_clock::now();
+
+    auto histogramResult = FLAGS_party == 0
+       ? game->demographicMetricsHistogram(myInfo, dummyInfo)
+       : game->demographicMetricsHistogram(dummyInfo, myInfo);
+    for (uint32_t i = 0; i < histogramResult.size(); ++i)
+      XLOG(INFO, "Histogram bin ", i, ": ", histogramResult.at(i));
+
+    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
+
+    XLOG(INFO) << "Histogram took: " <<(elapsed.count()) << "ms";
   } 
   catch (...) {
     XLOG(FATAL, "Failed to execute the game!");
