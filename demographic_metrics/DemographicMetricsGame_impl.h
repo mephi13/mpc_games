@@ -63,6 +63,57 @@ DemographicMetricsGame<schedulerId>::demographicMetricsAverageSecretShared(
 }
 
 template <int schedulerId>
+typename DemographicMetricsGame<schedulerId>::SecUnsignedInt
+DemographicMetricsGame<schedulerId>::mul(
+    const SecUnsignedInt& self,
+    const SecUnsignedInt& other) {
+
+  auto zero = SecUnsignedInt(std::vector<uint32_t>(self.getBatchSize(), 0), 0);
+
+  SecUnsignedInt rst = zero;
+  SecUnsignedInt multiplicand = SecUnsignedInt(self);
+
+  for (int8_t i = 0; i < 32; i++) {
+    // 32 additions + 32 mux operations for multiplication
+    rst = rst + zero.mux(other[i], multiplicand);
+
+    // we need to shift left the multiplicand
+    for (int8_t j = 31; j > 0; j--) {
+      multiplicand[j] = multiplicand[j-1];
+    }
+    multiplicand[0] = fbpcf::frontend::Bit<true, schedulerId, true>(std::vector<bool>(self.getBatchSize(), 0), 0); // clear the last bit
+  }
+
+  return rst;
+}
+
+template <int schedulerId>
+float
+DemographicMetricsGame<schedulerId>::demographicMetricsVariance(
+    const DemographicInfo& aliceDatabase,
+    const DemographicInfo& bobDatabase,
+    float mean 
+    ) {
+  int alicePartyId = 0;
+  int bobPartyId = 1;
+
+  SecDemographicInfo secAliceDatabase(aliceDatabase, alicePartyId);
+  SecDemographicInfo secBobDatabase(bobDatabase, bobPartyId);
+
+  auto secSum = secAliceDatabase.ageShare + secBobDatabase.ageShare;
+
+  auto secDiff = secSum - SecUnsignedInt(std::vector<uint32_t>(secSum.getBatchSize(), mean), alicePartyId);
+  auto secRes = mul(secDiff, secDiff);
+
+  auto pubResSum = aggregateBatch(secRes);
+
+  auto varianceEstimation = pubResSum/float(aliceDatabase.ageShare.size() - 1); // unbiased estimator
+
+  XLOG(INFO) << "varianceEstimation: " << varianceEstimation;
+  return varianceEstimation;
+}
+
+template <int schedulerId>
 int DemographicMetricsGame<schedulerId>::demographicMetricsValidate(
     DemographicInfo& aliceDatabase,
     DemographicInfo& bobDatabase) {
@@ -136,7 +187,7 @@ long unsigned int DemographicMetricsGame<schedulerId>::aggregateBatch(
   auto masks = vector<uint32_t>();
 
   for(size_t i = 0; i < inputBatch.getBatchSize(); ++i){
-    // basiacally doing calculations mod 2^32, so the mask 
+    // basically doing calculations mod 2^32, so the mask 
     // is taken at random from this space
     masks.push_back(folly::Random::secureRand32());
   }
@@ -160,7 +211,7 @@ long unsigned int DemographicMetricsGame<schedulerId>::aggregateBatch(
   auto maskSumPublic = SecUnsignedIntSingle(masksSum, bobPartyId).openToParty(alicePartyId).getValue();
 
   // calculate the sum
-  auto sum = shareSum - maskSumPublic;
+  uint32_t sum = shareSum - maskSumPublic;
   XLOG(DBG) << "sum: " << sum;
   return sum;
 }
@@ -205,7 +256,7 @@ DemographicMetricsGame<schedulerId>::demographicMetricsHistogram(
   // probably can be done much faster
   for(int i = 0; i < secAliceHistogram.size(); ++i){
     pubAliceHistogram.push_back(aggregateBatch(secAliceHistogram.at(i)));
-    XLOG(DBG) << "pubAliceHistogram[" << i << "]: " << pubAliceHistogram[i];
+    XLOG(INFO) << "pubAliceHistogram[" << i << "]: " << pubAliceHistogram[i];
   }
   return pubAliceHistogram;
 }

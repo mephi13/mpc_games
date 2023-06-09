@@ -82,7 +82,8 @@ int main(int argc, char* argv[]) {
   std::uniform_int_distribution<uint32_t> dist2(0, 250000);
 
   for (auto& item : myInfo.ageShare) {
-    item = std::max(int(45 * std::normal_distribution<float>(0.5, 0.6)(e)), 10);
+    // item = std::max(int(45 * std::normal_distribution<float>(0.5, 0.6)(e)), 10);
+    item = dist1(e);
   }
   for (auto item : myInfo.genderShare) { 
     item = (bool) (rand() % 2);
@@ -137,6 +138,15 @@ int main(int argc, char* argv[]) {
     elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
 
     XLOG(INFO) << "Secret shared average took: " <<(elapsed.count()) << "ms";
+
+    auto varianceRes = FLAGS_party == 0
+        ? game->demographicMetricsVariance(myInfo, dummyInfo, ssResult)
+        : game->demographicMetricsVariance(dummyInfo, myInfo, ssResult);
+    XLOG(INFO, "Variance result: ", varianceRes);
+
+    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
+
+    XLOG(INFO) << "Variance took: " <<(elapsed.count()) << "ms";
 
     start = std::chrono::steady_clock::now();
 
