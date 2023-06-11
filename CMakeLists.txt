@@ -7,15 +7,9 @@ cmake_minimum_required(VERSION 3.10.1)
 project(games)
 set(NAME "games")
 
-add_compile_options(-std=c++17)
-add_compile_options(-march=haswell)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# Don't compile with AVX512 instructions since many of the AWS
-# instances won't have access to that instruction set.
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-avx512f")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-avx512f")
+find_file(fbpcf_cmake NAMES cmake/fbpcf.cmake)
+include(${fbpcf_cmake})
 
 find_package(Boost REQUIRED COMPONENTS serialization)
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
@@ -25,6 +19,9 @@ find_library(fbpcf fbpcf /usr/local/lib/)
 find_package(folly REQUIRED)
 find_package(google_cloud_cpp_storage REQUIRED)
 find_package(gflags REQUIRED)
+
+find_package(Boost COMPONENTS serialization REQUIRED)
+include_directories(${Boost_INCLUDE_DIRS})
 
 add_executable(
   billionaire
@@ -48,6 +45,27 @@ target_link_libraries(
   Folly::folly
 )
 
+add_executable(
+  demographicapp
+  "demographic_metrics_app/main.cpp"
+  "demographic_metrics_app/DemographicMetricsApp.h"
+  "demographic_metrics_app/DemographicMetricsApp_impl.h"
+  "demographic_metrics_app/Csv.h"
+  "demographic_metrics_app/MainUtil.h"
+  "demographic_metrics_app/MPCTypes.h"
+  )
+target_link_libraries(
+  demographicapp
+  fbpcf
+  ${Boost_LIBRARIES}
+  ${AWSSDK_LINK_LIBRARIES}
+  ${EMP-OT_LIBRARIES}
+  google-cloud-cpp::storage
+  Folly::folly
+  re2
+)
+
+
 # add_executable(
 #   validation
 #   "input_validation/main.cpp"
@@ -65,3 +83,4 @@ endif()
 
 install(TARGETS billionaire DESTINATION bin)
 install(TARGETS demographic DESTINATION bin)
+install(TARGETS demographicapp DESTINATION bin)

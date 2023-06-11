@@ -192,7 +192,7 @@ long unsigned int DemographicMetricsGame<schedulerId>::aggregateBatch(
     masks.push_back(folly::Random::secureRand32());
   }
   auto secMasks = SecUnsignedInt(masks, bobPartyId);
-  auto pubInputShares = (inputBatch + secMasks).openToParty(alicePartyId).getValue();
+  auto pubInputShares = (inputBatch - secMasks).openToParty(alicePartyId).getValue();
 
   // calculate the sum of masked shares
   uint32_t shareSum = 0;
@@ -211,7 +211,7 @@ long unsigned int DemographicMetricsGame<schedulerId>::aggregateBatch(
   auto maskSumPublic = SecUnsignedIntSingle(masksSum, bobPartyId).openToParty(alicePartyId).getValue();
 
   // calculate the sum
-  uint32_t sum = shareSum - maskSumPublic;
+  uint32_t sum = shareSum + maskSumPublic;
   XLOG(DBG) << "sum: " << sum;
   return sum;
 }
