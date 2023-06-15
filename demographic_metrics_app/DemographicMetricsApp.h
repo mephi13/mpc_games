@@ -1,10 +1,3 @@
-/*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
 #pragma once
 
 #include <cstdlib>
@@ -67,7 +60,12 @@ class DemographicMetricsApp {
             startFileIndex_(startFileIndex),
             numbFiles_(numFiles) {};
 
-        void run();
+        void run(
+            bool validate = true,
+            bool average = true,
+            bool variance = false,
+            bool histogram = false
+        );
 
         void addFromCSV(
             const std::vector<std::string>& header,
@@ -92,7 +90,7 @@ class DemographicMetricsApp {
         std::vector<std::string> paramsPath_;
         std::vector<std::string> outputPaths_;
         std::shared_ptr<fbpcf::util::MetricCollector> metricCollector_;
-        int startFileIndex_;
+        long unsigned int startFileIndex_;
         int numbFiles_;
         SchedulerStatistics schedulerStatistics_;
 };

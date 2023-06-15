@@ -65,18 +65,6 @@ target_link_libraries(
   re2
 )
 
-
-# add_executable(
-#   validation
-#   "input_validation/main.cpp"
-#   "input_validation/InputValidationGame.h"
-#   "input_validation/InputValidationGame_impl.h")
-# target_link_libraries(
-#   validation
-#   fbpcf
-#   Folly::folly
-# )
-
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
  set(CMAKE_INSTALL_PREFIX "../")
 endif()

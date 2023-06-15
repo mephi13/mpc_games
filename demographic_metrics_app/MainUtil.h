@@ -1,10 +1,3 @@
-/*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
 #pragma once
 
 #include <future>
@@ -62,7 +55,7 @@ getIOFilepaths(
 template <int PARTY, int index>
 inline SchedulerStatistics startCalculatorAppsForShardedFilesHelper(
     int startFileIndex,
-    int remainingThreads,
+    long unsigned int remainingThreads,
     int numThreads,
     std::string serverIp,
     int port,
@@ -70,7 +63,10 @@ inline SchedulerStatistics startCalculatorAppsForShardedFilesHelper(
     std::string& inputGlobalParamsPath,
     std::vector<std::string>& outputFilepaths,
     fbpcf::engine::communication::SocketPartyCommunicationAgent::TlsInfo&
-        tlsInfo) {
+        tlsInfo,
+    bool averageMetrics,
+    bool varianceMetrics,
+    bool histogramMetrics) {
   // aggregate scheduler statistics across apps
   SchedulerStatistics schedulerStatistics{
       0, 0, 0, 0, folly::dynamic::object()};
@@ -109,8 +105,8 @@ inline SchedulerStatistics startCalculatorAppsForShardedFilesHelper(
         startFileIndex,
         numFiles);
 
-    auto future = std::async([&app]() {
-      app->run();
+    auto future = std::async([&app, &averageMetrics, &varianceMetrics, &histogramMetrics]() {
+      app->run(true, averageMetrics, varianceMetrics, histogramMetrics);
       return app->getSchedulerStatistics();
     });
 
@@ -128,7 +124,10 @@ inline SchedulerStatistics startCalculatorAppsForShardedFilesHelper(
                 inputFilepaths,
                 inputGlobalParamsPath,
                 outputFilepaths,
-                tlsInfo);
+                tlsInfo,
+                averageMetrics,
+                varianceMetrics,
+                histogramMetrics);
         schedulerStatistics.add(remainingStats);
       }
     }
@@ -147,7 +146,13 @@ inline SchedulerStatistics startCalculatorAppsForShardedFiles(
     std::string serverIp,
     int port,
     fbpcf::engine::communication::SocketPartyCommunicationAgent::TlsInfo&
-        tlsInfo) {
+        tlsInfo,
+    bool averageMetrics = false,
+    bool varianceMetrics = false,
+    bool histogramMetrics = false) {
+
+  if (!(averageMetrics || varianceMetrics || histogramMetrics))
+    averageMetrics = true;
   // use only as many threads as the number of files
   auto numThreads = std::min((int)inputFilepaths.size(), (int)concurrency);
 
@@ -160,7 +165,10 @@ inline SchedulerStatistics startCalculatorAppsForShardedFiles(
       inputFilepaths,
       inputGlobalParamsPath,
       outputFilepaths,
-      tlsInfo);
+      tlsInfo,
+      averageMetrics,
+      varianceMetrics,
+      histogramMetrics);
 }
 
 } // namespace fbpcf::edit_distance

@@ -1,10 +1,3 @@
-/*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <signal.h>
@@ -79,10 +72,18 @@ DEFINE_string(
     log_cost_s3_region,
     ".s3.us-west-2.amazonaws.com/",
     "s3 regioni name");
-DEFINE_string(
-    pc_feature_flags,
-    "",
-    "A String of PC Feature Flags passing from PCS, separated by comma");
+DEFINE_bool(
+    average,
+    false,
+    "Run average computation on the inputs");
+DEFINE_bool(
+    variance,
+    false,
+    "Run variance computation on the inputs");
+DEFINE_bool(
+    histogram,
+    false,
+    "Run count computation on the inputs");
 DEFINE_bool(
     use_tls,
     false,
@@ -139,24 +140,27 @@ int main(int argc, char** argv) {
     for (auto outputFilepath : outputFilepaths) {
       outputFileLogList << "\t\t" << outputFilepath << "\n";
     }
-    XLOG(INFO) << "Running conversion lift with settings:\n"
+    XLOG(INFO) << "Running demographic metrics with settings:\n"
                << "\tparty: " << FLAGS_party << "\n"
                << "\tserver_ip_address: " << FLAGS_server_ip << "\n"
                << "\tport: " << FLAGS_port << "\n"
                << "\tconcurrency: " << FLAGS_concurrency << "\n"
-               << "\tpc_feature_flags:" << FLAGS_pc_feature_flags
                << "\tinput: " << inputFileLogList.str()
                << "\toutput: " << outputFileLogList.str() << "\n"
                << "\tinput global params path: "
                << FLAGS_input_global_params_path << "\n"
-               << "\trun_id: " << FLAGS_run_id;
+               << "\trun_id: " << FLAGS_run_id
+               << "Calculating:" << "\n"
+               << "\taverage: " << FLAGS_average << "\n"
+               << "\tvariance: " << FLAGS_variance << "\n"
+               << "\thistogram: " << FLAGS_histogram << "\n";
   }
 
   FLAGS_party--; // subtract 1 because we use 0 and 1 for publisher and partner
                  // instead of 1 and 2
   fbpcf::demographic_metrics::SchedulerStatistics schedulerStatistics;
 
-  XLOG(INFO) << "Start Private Lift...";
+  XLOG(INFO) << "Start Demographic Metrics...";
   if (FLAGS_party == 0) {
     XLOG(INFO)
         << "Starting as Alice, will wait for Bob...";
@@ -168,7 +172,10 @@ int main(int argc, char** argv) {
             concurrency,
             FLAGS_server_ip,
             FLAGS_port,
-            tlsInfo);
+            tlsInfo,
+            FLAGS_average,
+            FLAGS_variance,
+            FLAGS_histogram);
   } else if (FLAGS_party == 1) {
     XLOG(INFO)
         << "Starting as Bob, will wait for Alice...";
@@ -180,7 +187,10 @@ int main(int argc, char** argv) {
             concurrency,
             FLAGS_server_ip,
             FLAGS_port,
-            tlsInfo);
+            tlsInfo,
+            FLAGS_average,
+            FLAGS_variance,
+            FLAGS_histogram);
   } else {
     XLOGF(FATAL, "Invalid Party: {}", FLAGS_party);
   }

@@ -1,10 +1,3 @@
-/*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
 #pragma once
 
 #include <type_traits>
@@ -244,7 +237,7 @@ DemographicMetricsGame<schedulerId>::demographicMetricsHistogram(
 
   // calculate histogram vectors, they will have to be aggregated later
   secAliceHistogram.push_back(zero.mux(secAge < SecUnsignedInt(std::vector<uint32_t>(validAgeAlice.size(), x[0]), alicePartyId), one));
-  for (int i = 1; i < x.size(); ++i) {
+  for (long unsigned int i = 1; i < x.size(); ++i) {
     auto binStart = SecUnsignedInt(std::vector<uint32_t>(validAgeAlice.size(), x[i-1]), alicePartyId);
     auto binEnd = SecUnsignedInt(std::vector<uint32_t>(validAgeAlice.size(), x[i]), alicePartyId);
     secAliceHistogram.push_back(zero.mux((secAge >= binStart) & (secAge < binEnd), one));
@@ -254,7 +247,7 @@ DemographicMetricsGame<schedulerId>::demographicMetricsHistogram(
   std::vector<long unsigned int> pubAliceHistogram;
 
   // probably can be done much faster
-  for(int i = 0; i < secAliceHistogram.size(); ++i){
+  for(long unsigned int i = 0; i < secAliceHistogram.size(); ++i){
     pubAliceHistogram.push_back(aggregateBatch(secAliceHistogram.at(i)));
     XLOG(INFO) << "pubAliceHistogram[" << i << "]: " << pubAliceHistogram[i];
   }

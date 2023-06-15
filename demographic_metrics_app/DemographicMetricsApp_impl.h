@@ -1,10 +1,3 @@
-/*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
 #include <fbpcf/io/api/FileIOWrappers.h>
 #include <fbpcf/scheduler/LazySchedulerFactory.h>
 #include <fbpcf/scheduler/NetworkPlaintextSchedulerFactory.h>
@@ -16,7 +9,12 @@
 namespace fbpcf::demographic_metrics {
 
 template <int schedulerId>
-void DemographicMetricsApp<schedulerId>::run() {
+void DemographicMetricsApp<schedulerId>::run(
+  bool validate,
+  bool average,
+  bool variance,
+  bool histogram
+) {
   std::unique_ptr<fbpcf::scheduler::IScheduler> scheduler = fbpcf::scheduler::getLazySchedulerFactoryWithRealEngine(
             party_, *communicationAgentFactory_, metricCollector_)
             ->create();
@@ -33,6 +31,7 @@ void DemographicMetricsApp<schedulerId>::run() {
 
       auto numRows = myInput.ageShare.size();
       XLOG(INFO) << "Have " << numRows << " values in inputData.";
+      std::stringstream ss;
 
       DemographicInfo dummyInput = {
           .ageShare = std::vector<uint32_t>(numRows),
@@ -40,13 +39,51 @@ void DemographicMetricsApp<schedulerId>::run() {
           .wealthShare = std::vector<uint32_t>(numRows),
       };
 
-      auto validateResult = party_ == 0
-          ? game.demographicMetricsValidate(myInput, dummyInput)
-          : game.demographicMetricsValidate(dummyInput, myInput);
+      if (validate)
+      {
+        auto validateResult = party_ == 0
+            ? game.demographicMetricsValidate(myInput, dummyInput)
+            : game.demographicMetricsValidate(dummyInput, myInput);
+        ss << "validateResult: " << validateResult << std::endl;
+      }
+      
+      float averageResult = 0;
+      if (average || variance)
+      {
+        averageResult = party_ == 0
+            ? game.demographicMetricsAverageSecretShared(myInput, dummyInput)
+            : game.demographicMetricsAverageSecretShared(dummyInput, myInput);
+        ss << "averageResult: " << averageResult << std::endl;
+      }
 
-      XLOG(INFO) << "done calculating";
+      if (variance)
+      {
+        auto varianceResult = party_ == 0
+            ? game.demographicMetricsVariance(myInput, dummyInput, averageResult)
+            : game.demographicMetricsVariance(dummyInput, myInput, averageResult);
+        ss << "varianceResult: " << varianceResult << std::endl;
+      }
 
-      putOutputData(std::to_string(validateResult), outputPaths_.at(i));
+      if (histogram)
+      {
+        auto histogramResult = party_ == 0
+            ? game.demographicMetricsHistogram(myInput, dummyInput)
+            : game.demographicMetricsHistogram(dummyInput, myInput);
+        ss << "histogramResult: [";
+
+        for (long unsigned int i = 0; i < histogramResult.size(); ++i) {
+          ss << histogramResult[i];
+          if (i != histogramResult.size() - 1) {
+            ss << ", ";
+          }
+        }
+
+        ss << "]" << std::endl;
+      }
+
+      XLOG(INFO) << "done calculating";    
+
+      putOutputData(ss.str(), outputPaths_.at(i));
     } catch (const std::exception& e) {
       XLOGF(
           ERR,
