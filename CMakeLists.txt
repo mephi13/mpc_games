@@ -7,7 +7,6 @@ cmake_minimum_required(VERSION 3.10.1)
 project(games)
 set(NAME "games")
 
-
 find_file(fbpcf_cmake NAMES cmake/fbpcf.cmake)
 include(${fbpcf_cmake})
 
@@ -22,17 +21,6 @@ find_package(gflags REQUIRED)
 
 find_package(Boost COMPONENTS serialization REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
-
-add_executable(
-  billionaire
-  "billionaire_problem/main.cpp"
-  "billionaire_problem/BillionaireProblemGame.h"
-  "billionaire_problem/BillionaireProblemGame_impl.h")
-target_link_libraries(
-  billionaire
-  fbpcf
-  Folly::folly
-)
 
 add_executable(
   demographic
@@ -69,6 +57,5 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
  set(CMAKE_INSTALL_PREFIX "../")
 endif()
 
-install(TARGETS billionaire DESTINATION bin)
 install(TARGETS demographic DESTINATION bin)
 install(TARGETS demographicapp DESTINATION bin)
